@@ -10,258 +10,18 @@
 module Quadratic where
 
 import Control.Applicative
-import Control.Monad (guard)
 import Data.Maybe (fromMaybe)
-import Data.Void
+import Numeric.Natural (Natural)
 import qualified Text.ParserCombinators.ReadP as ReadP
 import qualified Text.ParserCombinators.ReadPrec as ReadPrec
 import Text.Read (Read (..))
 
-__ :: a
-__ = error "Logical or arity value used"
+import qualified Data.Ratio as Base
+
+import Data.Positive
+import Data.Z
 
 data Prod a b = Pair { ffst :: b, ssnd :: a }
-
-data Positive = XI Positive
-              | XO Positive
-              | XH
-
-data Z = ZERO
-       | POS Positive
-       | NEG Positive
-
-add_un :: Positive -> Positive
-add_un = \ case
-    XI x' -> XO (add_un x')
-    XO x' -> XI x'
-    XH -> XO XH
-
-add :: Positive -> Positive -> Positive
-add x y =
-  case x of
-    XI x' ->
-      (case y of
-         XI y' -> XO (add_carry x' y')
-         XO y' -> XI (add x' y')
-         XH -> XO (add_un x'))
-    XO x' ->
-      (case y of
-         XI y' -> XI (add x' y')
-         XO y' -> XO (add x' y')
-         XH -> XI x')
-    XH ->
-      (case y of
-         XI y' -> XO (add_un y')
-         XO y' -> XI y'
-         XH -> XO XH)
-
-add_carry :: Positive -> Positive -> Positive
-add_carry x y =
-  case x of
-    XI x' ->
-      (case y of
-         XI y' -> XI (add_carry x' y')
-         XO y' -> XO (add_carry x' y')
-         XH -> XI (add_un x'))
-    XO x' ->
-      (case y of
-         XI y' -> XO (add_carry x' y')
-         XO y' -> XI (add x' y')
-         XH -> XO (add_un x'))
-    XH ->
-      (case y of
-         XI y' -> XI (add_un y')
-         XO y' -> XO (add_un y')
-         XH -> XI XH)
-
-double_moins_un :: Positive -> Positive
-double_moins_un x =
-  case x of
-    XI x' -> XI (XO x')
-    XO x' -> XI (double_moins_un x')
-    XH -> XH
-
-ccompare :: Positive -> Positive -> Ordering -> Ordering
-ccompare x y r =
-  case x of
-    XI x' ->
-      (case y of
-         XI y' -> ccompare x' y' r
-         XO y' -> ccompare x' y' GT
-         XH -> GT)
-    XO x' ->
-      (case y of
-         XI y' -> ccompare x' y' LT
-         XO y' -> ccompare x' y' r
-         XH -> GT)
-    XH -> (case y of
-             XI _ -> LT
-             XO _ -> LT
-             XH -> r)
-
-data Entier = Nul
-            | Pos Positive
-
-un_suivi_de, zero_suivi_de :: Entier -> Entier
-
-un_suivi_de = \ case
-    Nul -> Pos XH
-    Pos p -> Pos (XI p)
-
-zero_suivi_de = \ case
-    Nul -> Nul
-    Pos p -> Pos (XO p)
-
-double_moins_deux :: Positive -> Entier
-double_moins_deux = \ case
-    XI x' -> Pos (XO (XO x'))
-    XO x' -> Pos (XO (double_moins_un x'))
-    XH -> Nul
-
-sub_pos :: Positive -> Positive -> Entier
-sub_pos x y =
-  case x of
-    XI x' ->
-      (case y of
-         XI y' -> zero_suivi_de (sub_pos x' y')
-         XO y' -> un_suivi_de (sub_pos x' y')
-         XH -> Pos (XO x'))
-    XO x' ->
-      (case y of
-         XI y' -> un_suivi_de (sub_neg x' y')
-         XO y' -> zero_suivi_de (sub_pos x' y')
-         XH -> Pos (double_moins_un x'))
-    XH ->
-      (case y of
-         XI y' -> Pos (double_moins_un y')
-         XO y' -> double_moins_deux y'
-         XH -> Nul)
-
-sub_neg :: Positive -> Positive -> Entier
-sub_neg x y =
-  case x of
-    XI x' ->
-      (case y of
-         XI y' -> un_suivi_de (sub_neg x' y')
-         XO y' -> zero_suivi_de (sub_pos x' y')
-         XH -> Pos (double_moins_un x'))
-    XO x' ->
-      (case y of
-         XI y' -> zero_suivi_de (sub_neg x' y')
-         XO y' -> un_suivi_de (sub_neg x' y')
-         XH -> double_moins_deux x')
-    XH ->
-      (case y of
-         XI y' -> Pos (XO y')
-         XO y' -> Pos (double_moins_un y')
-         XH -> Nul)
-
-op :: Ordering -> Ordering
-op = \ case
-    EQ -> EQ
-    LT -> GT
-    GT -> LT
-
-zplus :: Z -> Z -> Z
-zplus x y = case x of
-    ZERO -> y
-    POS x' ->
-      (case y of
-         ZERO -> x
-         POS y' -> POS (add x' y')
-         NEG y' ->
-           (case ccompare x' y' EQ of
-              EQ -> ZERO
-              LT -> NEG (true_sub y' x')
-              GT -> POS (true_sub x' y')))
-    NEG x' ->
-      (case y of
-         ZERO -> x
-         POS y' ->
-           (case ccompare x' y' EQ of
-              EQ -> ZERO
-              LT -> POS (true_sub y' x')
-              GT -> NEG (true_sub x' y'))
-         NEG y' -> NEG (add x' y'))
-  where
-    true_sub x0 y0 = case sub_pos x0 y0 of
-        Nul -> XH
-        Pos z -> z
-
-zopp :: Z -> Z
-zopp = \ case
-    ZERO -> ZERO
-    POS x0 -> NEG x0
-    NEG x0 -> POS x0
-
-times :: Positive -> Positive -> Positive
-times x y = case x of
-    XI x' -> add y (XO (times x' y))
-    XO x' -> XO (times x' y)
-    XH -> y
-
-zmult :: Z -> Z -> Z
-zmult x y =
-  case x of
-    ZERO -> ZERO
-    POS x' ->
-      (case y of
-         ZERO -> ZERO
-         POS y' -> POS (times x' y')
-         NEG y' -> NEG (times x' y'))
-    NEG x' ->
-      (case y of
-         ZERO -> ZERO
-         POS y' -> NEG (times x' y')
-         NEG y' -> POS (times x' y'))
-
-instance Eq Z where
-    x == y = EQ == compare x y
-
-instance Ord Z where
-    compare x y = case x of
-        ZERO -> case y of
-            ZERO -> EQ
-            POS _ -> LT
-            NEG _ -> GT
-        POS x' -> case y of
-            ZERO -> GT
-            POS y' -> ccompare x' y' EQ
-            NEG _ -> GT
-        NEG x' -> case y of
-            ZERO -> LT
-            POS _ -> LT
-            NEG y' -> op (ccompare x' y' EQ)
-
-zsgn :: Z -> Z
-zsgn = \ case
-    ZERO -> ZERO
-    POS _ -> POS XH
-    NEG _ -> NEG XH
-
-zabs :: Z -> Z
-zabs = \ case
-    ZERO -> ZERO
-    POS p -> POS p
-    NEG p -> POS p
-
-zminus :: Z -> Z -> Z
-zminus m n = zplus m (zopp n)
-
-zccompare_rec :: Z -> Z -> (() -> a) -> (() -> a) -> (() -> a) -> a
-zccompare_rec x y h1 h2 h3 = case compare x y of
-    EQ -> h1 ()
-    LT -> h2 ()
-    GT -> h3 ()
-
-z_eq_dec, z_lt_dec, z_le_dec, z_le_lt_eq_dec :: Z -> Z -> Bool
-z_eq_dec x y = zccompare_rec x y (\_ -> True) (\_ -> False) (\_ -> False)
-z_lt_dec x y = zccompare_rec x y (\_ -> False) (\_ -> True) (\_ -> False)
-z_le_dec x y = zccompare_rec x y (\_ -> True) (\_ -> True) (\_ -> False)
-z_le_lt_eq_dec x y = zccompare_rec x y (\_ -> False) (\_ -> True) (\_ -> absurd __)
-
-z_zerop :: Z -> Bool
-z_zerop = (== ZERO)
 
 data Qpositive = NR Qpositive
                | DL Qpositive
@@ -278,7 +38,7 @@ data Q = Zero
        | Qneg Qpositive
 
 qpositive_eq_dec :: Qpositive -> Qpositive -> Bool
-qpositive_eq_dec w w' =
+qpositive_eq_dec =
   qpositive_rec (\_ h w'0 ->
     case w'0 of
       NR w'1 -> h w'1
@@ -291,43 +51,23 @@ qpositive_eq_dec w w' =
     case w'0 of
       NR _ -> False
       DL _ -> False
-      One -> True) w w'
+      One -> True)
 
-not_Zeq_inf :: Z -> Z -> Bool
-not_Zeq_inf x y =
-  case z_lt_dec x y of
-    True -> True
-    False ->
-      (case z_le_lt_eq_dec y x of
-         True -> False
-         False -> absurd __)
+toQ :: Base.Rational -> Q
+toQ q = fraction_encoding (toZ $ Base.numerator q) (toZ $ Base.denominator q)
 
-z_dec :: Z -> Z -> Maybe Bool
-z_dec x y =
-  case z_lt_dec x y of
-    True -> Just True
-    False ->
-      (case z_le_lt_eq_dec y x of
-         True -> Just False
-         False -> Nothing)
+fromQ :: Q -> Base.Rational
+fromQ Zero = 0
+fromQ (Qpos q) = id     . toRational $ fromQpos q
+fromQ (Qneg q) = negate . toRational $ fromQpos q
 
-z_dec' :: Z -> Z -> Maybe Bool
-z_dec' x y = not_Zeq_inf x y <$ guard (x /= y)
+toQpos :: Base.Ratio Natural -> Qpositive
+toQpos q = positive_fraction_encoding (toZ $ Base.numerator q) (toZ $ Base.denominator q)
 
-quadro_leq_inf :: Z -> Z -> Z -> Z -> Bool
-quadro_leq_inf a b c d =
-  case z_lt_dec a c of
-    True -> False
-    False -> (case z_lt_dec b d of
-                True -> False
-                False -> True)
-
-zsgn_1 :: Z -> Maybe Bool
-zsgn_1 x =
-  case x of
-    ZERO -> Just True
-    POS _ -> Just False
-    NEG _ -> Nothing
+fromQpos :: Qpositive -> Base.Ratio Natural
+fromQpos One = 1
+fromQpos (NR q) = 1 + fromQpos q
+fromQpos (DL q) = 1 / (1 + 1 / fromQpos q)
 
 positive_fraction_encoding :: Z -> Z -> Qpositive
 positive_fraction_encoding x y =
@@ -346,21 +86,6 @@ fraction_encoding m n =
          True -> Qneg (positive_fraction_encoding (zabs m) (zabs n))
          False -> Qpos (positive_fraction_encoding (zabs m) (zabs n)))
     Nothing -> Zero
-
-outside_interval :: Z -> Z -> Z
-outside_interval a b = zplus (zsgn a) (zsgn b)
-
-inside_interval_1_dec_inf, inside_interval_2_dec_inf :: Z -> Z -> Bool
-
-inside_interval_1_dec_inf a b = case (compare ZERO a, compare ZERO b) of
-    (LT, LT) -> True
-    (GT, GT) -> True
-    _        -> False
-
-inside_interval_2_dec_inf a b = case (compare ZERO a, compare ZERO b) of
-    (LT, GT) -> True
-    (GT, LT) -> True
-    _        -> False
 
 qhomographic_sign
  :: Z -> Z -> Z -> Z -> Qpositive
@@ -587,15 +312,6 @@ h_sign a b c d p = case qhomographic_sign a b c d p of Pair l1 _l2 -> l1
 qpositive_dec_One :: Qpositive -> Bool
 qpositive_dec_One p = qpositive_eq_dec p One
 
-top_more_informative :: Z -> Z -> Z -> Z -> Bool
-top_more_informative a b c d =
-  case quadro_leq_inf a b c d of
-    True ->
-        case z_le_lt_eq_dec c a of
-          True -> True
-          False -> z_le_lt_eq_dec d b
-    False -> False
-
 qhomographic_Qpositive_to_Qpositive :: Z -> Z -> Z -> Z -> Qpositive -> Qpositive
 qhomographic_Qpositive_to_Qpositive a b c d p =
   case qpositive_dec_One p of
@@ -618,7 +334,7 @@ qhomographic_Qpositive_to_Qpositive a b c d p =
                    DL q ->
                      qhomographic_Qpositive_to_Qpositive (zplus a b) b
                        (zplus c d) d q
-                   One -> absurd __)))
+                   One -> undefined)))
 
 new_a, new_b, new_c, new_d :: Z -> Z -> Z -> Z -> Qpositive -> Z
 new_a a b c d p = ffst (ffst (ssnd (qhomographic_sign a b c d p)))
@@ -676,36 +392,6 @@ qhomographic a b c d s =
     Zero -> fraction_encoding b d
     Qpos p -> qhomographic_Qpositive_to_Q a b c d p
     Qneg p -> qhomographic_Qpositive_to_Q (zopp a) b (zopp c) d p
-
-outside_square :: Z -> Z -> Z -> Z -> Z
-outside_square a b c d =
-  zplus (zplus (zplus (zsgn a) (zsgn b)) (zsgn c)) (zsgn d)
-
-three_integers_dec_inf :: Z -> Z -> Z -> Bool
-three_integers_dec_inf a b c =
-  case z_zerop a of
-    True -> (case z_zerop b of
-               True -> z_zerop c
-               False -> False)
-    False -> False
-
-inside_square_1_dec_inf, inside_square_2_dec_inf :: Z -> Z -> Bool
-
-inside_square_1_dec_inf o1 o2 =
-  case z_lt_dec (POS (XO XH)) o1 of
-    True -> z_lt_dec (POS (XO XH)) o2
-    False ->
-      (case z_lt_dec o1 (NEG (XO XH)) of
-         True -> z_lt_dec o2 (NEG (XO XH))
-         False -> False)
-
-inside_square_2_dec_inf o1 o2 =
-  case z_lt_dec (POS (XO XH)) o1 of
-    True -> z_lt_dec o2 (NEG (XO XH))
-    False ->
-      (case z_lt_dec o1 (NEG (XO XH)) of
-         True -> z_lt_dec (POS (XO XH)) o2
-         False -> False)
 
 qquadratic_sign
  :: Z -> Z -> Z -> Z -> Z -> Z -> Z -> Z
@@ -1262,7 +948,7 @@ qquadratic_Qpositive_to_Qpositive a b c d e f g h p1 p2 =
                                  (zplus b d) (zplus e f) f
                                  (zplus (zplus (zplus e f) g) h)
                                  (zplus f h) x ys
-                             One -> absurd __ x __)
+                             One -> undefined x undefined)
                         DL x ->
                           (case p2 of
                              NR ys ->
@@ -1278,8 +964,8 @@ qquadratic_Qpositive_to_Qpositive a b c d e f g h p1 p2 =
                                  (zplus b d) (zplus c d) d
                                  (zplus (zplus (zplus e f) g) h)
                                  (zplus f h) (zplus g h) h x ys
-                             One -> absurd __ x __)
-                        One -> absurd __))))
+                             One -> undefined x undefined)
+                        One -> undefined))))
 
 same_ratio_dec_inf a b c d e f g h =
   case z_eq_dec (zmult a f) (zmult b e) of
@@ -1348,7 +1034,7 @@ qquadratic_sg_denom_nonzero_nonzero_inf e f g h _ _ =
            (case z_zerop g of
               True ->
                 (case z_zerop h of
-                   True -> absurd __
+                   True -> undefined
                    False -> Nothing)
               False -> Just Nothing)
          False -> Just (Just False))
@@ -1382,7 +1068,7 @@ qquadratic_Qpositive_to_Q a b c d e f g h p1 p2 =
                           (qnew_d a b c d e f g h p1 p2)) of
                    Just s0 ->
                      (case s0 of
-                        True -> absurd __
+                        True -> undefined
                         False -> Qpos
                           (qquadratic_Qpositive_to_Qpositive
                             (qnew_a a b c d e f g h p1 p2)
@@ -1417,7 +1103,7 @@ qquadratic_Qpositive_to_Q a b c d e f g h p1 p2 =
                      (qnew_d a b c d e f g h p1 p2)) of
               Just s ->
                 (case s of
-                   True -> absurd __
+                   True -> undefined
                    False -> Qneg
                      (qquadratic_Qpositive_to_Qpositive
                        (qnew_a a b c d e f g h p1 p2)
@@ -1464,6 +1150,12 @@ qquadratic a b c d e f g h s1 s2 =
            qquadratic_Qpositive_to_Q a (zopp b) (zopp c) d e (zopp f)
              (zopp g) h p1 p2)
 
+qplus, qmult, qminus, qdiv :: Q -> Q -> Q
+qplus = qquadratic 0 1 1 0 0 0 0 1
+qmult = qquadratic 1 0 0 0 0 0 0 1
+qminus = qquadratic 0 1 (-1) 0 0 0 0 1
+qdiv = qquadratic 0 1 0 0 0 0 1 0
+
 
 
 -- Upto here was generated using ^Coq> Extraction "quadratic" Qquadratic^ in Coq
@@ -1480,19 +1172,6 @@ instance Show Q where
          Zero -> "0"
          Qpos p' -> show p'
          Qneg p' -> '-':show p'
-
-
-nattoPos :: Integral a => a -> Positive
-nattoPos x
-  | 1 == x       = XH
-  | 1 == mod x 2 = XI (nattoPos (div x 2))
-  | otherwise    = XO (nattoPos (div x 2))
-
-toZ :: Integral a => a -> Z
-toZ x = case compare x 0 of
-    EQ -> ZERO
-    GT -> POS (nattoPos x)
-    LT -> NEG (nattoPos (negate x))
 
 instance Read Qpositive where
     readPrec = ReadPrec.lift $
