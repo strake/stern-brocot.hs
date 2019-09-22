@@ -163,11 +163,11 @@ qquadratic_sign a b c d e f g h p1 p2 = case (p1, p2) of
         qquadratic_sign
         (a + b + c + d) (b + d) (c + d) d (e + f + g + h) (f + h) (g + h) h xs ys
     (_, One) ->
-        let (sH, ((aH, bH, cH, dH), pH)) = qhomographic_sign (a + b) (c + d) (e + f) (g + h) p1
-        in (sH, ((ZERO, aH, ZERO, bH, ZERO, cH, ZERO, dH), (pH, One)))
+        let (s', ((a', b', c', d'), p')) = qhomographic_sign (a + b) (c + d) (e + f) (g + h) p1
+        in (s', ((ZERO, a', ZERO, b', ZERO, c', ZERO, d'), (p', One)))
     (One, _) ->
-        let (sH, ((aH, bH, cH, dH), pH)) = qhomographic_sign (a + c) (b + d) (e + g) (f + h) p2
-        in (sH, ((ZERO, ZERO, aH, bH, ZERO, ZERO, cH, dH), (One, pH)))
+        let (s', ((a', b', c', d'), p')) = qhomographic_sign (a + c) (b + d) (e + g) (f + h) p2
+        in (s', ((ZERO, ZERO, a', b', ZERO, ZERO, c', d'), (One, p')))
   where
     o1 = outside [a, b, c, d]
     o2 = outside [e, f, g, h]
