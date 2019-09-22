@@ -14,9 +14,9 @@ cabal-version:       >=1.10
 
 library
   hs-source-dirs:      src
-  exposed-modules:     Quadratic
-                     , Data.Positive
+  exposed-modules:     Data.Positive
                      , Data.Entier
+                     , Data.Q
                      , Data.Z
   build-depends:       base >= 4.7 && < 5
                      , base-unicode-symbols

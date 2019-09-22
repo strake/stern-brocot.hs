@@ -5,8 +5,8 @@ import Test.SmallCheck.Series
 import Test.Tasty
 import Test.Tasty.SmallCheck
 
+import Data.Q
 import Data.Z
-import Quadratic
 
 main :: IO ()
 main = defaultMain $ testGroup ""

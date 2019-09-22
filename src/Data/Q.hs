@@ -1,4 +1,4 @@
-module Quadratic where
+module Data.Q where
 
 import Control.Applicative
 import Data.Maybe (fromMaybe)
