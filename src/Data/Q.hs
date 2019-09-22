@@ -85,9 +85,7 @@ qhomographic_sign
 qhomographic_sign a b c d p = case p of
     NR q -> blah $ qhomographic_sign a (a + b) c (c + d) q
     DL q -> blah $ qhomographic_sign (a + b) b (c + d) d q
-    One | signum (a + b) == ZERO           -> (ZERO,   w)
-        | signum (a + b) == signum (c + d) -> (POS XH, w)
-        | otherwise                        -> (NEG XH, w)
+    One -> (signum (a + b) * signum (c + d), w)
   where
     o1 = outside [a, b]
     o2 = outside [c, d]
