@@ -55,11 +55,22 @@ fromQpos One = 1
 fromQpos (NR q) = 1 + fromQpos q
 fromQpos (DL q) = 1 / (1 + 1 / fromQpos q)
 
+positive_fraction_encoding' :: Positive -> Positive -> Qpositive
+positive_fraction_encoding' x y = case sub' x y of
+    EQ' -> One
+    LT' z -> DL (positive_fraction_encoding' x z)
+    GT' z -> DL (positive_fraction_encoding' z y)
+
 positive_fraction_encoding :: Z -> Z -> Qpositive
 positive_fraction_encoding x y = case compare x y of
     EQ -> One
     LT -> DL (positive_fraction_encoding x (y - x))
     GT -> NR (positive_fraction_encoding (x - y) y)
+
+fraction_encoding' :: Z -> Positive -> Q
+fraction_encoding' ZERO _ = Zero
+fraction_encoding' (POS n) d = Qpos (positive_fraction_encoding' n d)
+fraction_encoding' (NEG n) d = Qneg (positive_fraction_encoding' n d)
 
 fraction_encoding :: Z -> Z -> Q
 fraction_encoding m n = case m * n of
