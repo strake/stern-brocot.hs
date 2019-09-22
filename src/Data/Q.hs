@@ -12,8 +12,6 @@ import qualified Data.Ratio as Base
 import Data.Positive
 import Data.Z
 
-type Prod a b = (b, a)
-
 data Qpositive = NR Qpositive
                | DL Qpositive
                | One
@@ -81,7 +79,7 @@ fraction_encoding m n = case m * n of
 
 qhomographic_sign
  :: Z -> Z -> Z -> Z -> Qpositive
- -> Prod (Prod Qpositive (Z, Z, Z, Z)) Z
+ -> (Z, ((Z, Z, Z, Z), Qpositive))
 qhomographic_sign a b c d p = case p of
     NR q -> blah $ qhomographic_sign a (a + b) c (c + d) q
     DL q -> blah $ qhomographic_sign (a + b) b (c + d) d q
@@ -142,11 +140,7 @@ qhomographic a b c d = \ case
 qquadratic_sign
  :: Z -> Z -> Z -> Z -> Z -> Z -> Z -> Z
  -> Qpositive -> Qpositive
- -> Prod
-    (Prod
-     (Qpositive, Qpositive)
-     ((Z, Z, Z, Z, Z, Z, Z, Z)))
-    Z
+ -> (Z, ((Z, Z, Z, Z, Z, Z, Z, Z), (Qpositive, Qpositive)))
 qquadratic_sign a b c d e f g h p1 p2 = case (p1, p2) of
     (NR xs, NR ys) -> blah $
         qquadratic_sign
