@@ -146,8 +146,8 @@ qquadratic_sign
  -> Qpositive -> Qpositive
  -> Prod
     (Prod
-     (Prod Qpositive Qpositive)
-     (Prod (Z, Z, Z, Z) (Z, Z, Z, Z)))
+     (Qpositive, Qpositive)
+     ((Z, Z, Z, Z, Z, Z, Z, Z)))
     Z
 qquadratic_sign a b c d e f g h p1 p2 = case (p1, p2) of
     (NR xs, NR ys) -> blah $
@@ -164,10 +164,10 @@ qquadratic_sign a b c d e f g h p1 p2 = case (p1, p2) of
         (a + b + c + d) (b + d) (c + d) d (e + f + g + h) (f + h) (g + h) h xs ys
     (_, One) ->
         let (sH, ((aH, bH, cH, dH), pH)) = qhomographic_sign (a + b) (c + d) (e + f) (g + h) p1
-        in (sH, (((ZERO, aH, ZERO, bH), (ZERO, cH, ZERO, dH)), (pH, One)))
+        in (sH, ((ZERO, aH, ZERO, bH, ZERO, cH, ZERO, dH), (pH, One)))
     (One, _) ->
         let (sH, ((aH, bH, cH, dH), pH)) = qhomographic_sign (a + c) (b + d) (e + g) (f + h) p2
-        in (sH, (((ZERO, ZERO, aH, bH), (ZERO, ZERO, cH, dH)), (One, pH)))
+        in (sH, ((ZERO, ZERO, aH, bH, ZERO, ZERO, cH, dH), (One, pH)))
   where
     o1 = outside [a, b, c, d]
     o2 = outside [e, f, g, h]
@@ -184,7 +184,7 @@ qquadratic_sign a b c d e f g h p1 p2 = case (p1, p2) of
           | inside_square_1_dec_inf o1 o2 -> (POS XH, w)
           | inside_square_2_dec_inf o1 o2 -> (NEG XH, w)
         _ -> r
-      where w = (((a, b, c, d), (e, f, g, h)), (p1, p2))
+      where w = ((a, b, c, d, e, f, g, h), (p1, p2))
 
 qquadratic_Qpositive_to_Qpositive :: Z -> Z -> Z -> Z -> Z -> Z -> Z -> Z -> Qpositive -> Qpositive -> Qpositive
 qquadratic_Qpositive_to_Qpositive a b c d e f g h p q = case (p, q) of
@@ -219,7 +219,7 @@ qquadratic_Qpositive_to_Q a b c d e f g h p1 p2
          (NEG _, POS _) -> Qneg (blah id negate)
          (NEG _, NEG _) -> Qneg (blah negate id)
   where
-    (s', (((a', b', c', d'), (e', f', g', h')), (p1', p2'))) = qquadratic_sign a b c d e f g h p1 p2
+    (s', ((a', b', c', d', e', f', g', h'), (p1', p2'))) = qquadratic_sign a b c d e f g h p1 p2
     blah φ χ = qquadratic_Qpositive_to_Qpositive (φ a') (φ b') (φ c') (φ d') (χ e') (χ f') (χ g') (χ h') p1' p2'
 
 qquadratic :: Z -> Z -> Z -> Z -> Z -> Z -> Z -> Z -> Q -> Q -> Q
