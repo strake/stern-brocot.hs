@@ -3,11 +3,11 @@ module Data.Z where
 import Data.Foldable (foldMap)
 import Data.Monoid (Sum (..))
 
-import Data.Positive
+import Data.Np
 
 data Z = ZERO
-       | POS Positive
-       | NEG Positive
+       | POS Np
+       | NEG Np
   deriving (Eq)
 
 instance Num Z where

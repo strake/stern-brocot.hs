@@ -1,16 +1,16 @@
-module Data.Positive where
+module Data.Np where
 
 import Numeric.Natural
 
-data Positive = XI Positive
-              | XO Positive
-              | XH
+data Np = XI Np
+        | XO Np
+        | XH
   deriving (Eq)
 
-instance Ord Positive where
+instance Ord Np where
     compare x y = ccompare x y EQ
 
-add :: Positive -> Positive -> Positive
+add :: Np -> Np -> Np
 add x y =
   case x of
     XI x' ->
@@ -29,7 +29,7 @@ add x y =
         XO y' -> XI y'
         XH -> XO XH
 
-add_carry :: Positive -> Positive -> Positive
+add_carry :: Np -> Np -> Np
 add_carry x y =
   case x of
     XI x' ->
@@ -48,14 +48,14 @@ add_carry x y =
         XO y' -> XO (add_un y')
         XH -> XI XH
 
-double_moins_un :: Positive -> Positive
+double_moins_un :: Np -> Np
 double_moins_un x =
   case x of
     XI x' -> XI (XO x')
     XO x' -> XI (double_moins_un x')
     XH -> XH
 
-ccompare :: Positive -> Positive -> Ordering -> Ordering
+ccompare :: Np -> Np -> Ordering -> Ordering
 ccompare x y r =
   case x of
     XI x' ->
@@ -73,30 +73,30 @@ ccompare x y r =
             XO _ -> LT
             XH -> r
 
-times :: Positive -> Positive -> Positive
+times :: Np -> Np -> Np
 times x y = case x of
     XI x' -> add y (XO (times x' y))
     XO x' -> XO (times x' y)
     XH -> y
 
-add_un :: Positive -> Positive
+add_un :: Np -> Np
 add_un = \ case
     XI x' -> XO (add_un x')
     XO x' -> XI x'
     XH -> XO XH
 
-nattoPos :: Integral a => a -> Positive
+nattoPos :: Integral a => a -> Np
 nattoPos x
   | 1 == x       = XH
   | 1 == mod x 2 = XI (nattoPos (div x 2))
   | otherwise    = XO (nattoPos (div x 2))
 
-fromPos :: Positive -> Natural
+fromPos :: Np -> Natural
 fromPos XH = 1
 fromPos (XI n) = 2*fromPos n + 1
 fromPos (XO n) = 2*fromPos n
 
-sub' :: Positive -> Positive -> Difference Positive
+sub' :: Np -> Np -> Difference Np
 sub' (XI x) (XI y) = XO <$> sub' x y
 sub' (XI x) (XO y) = case sub' x y of
     LT' z -> LT' (double_moins_un z)
@@ -110,7 +110,7 @@ sub' (XO x) (XO y) = XO <$> sub' x y
 sub' x XH = maybe EQ' GT' $ sub_un x
 sub' XH y = maybe EQ' LT' $ sub_un y
 
-sub_un :: Positive -> Maybe Positive
+sub_un :: Np -> Maybe Np
 sub_un XH = Nothing
 sub_un (XI n) = Just (XO n)
 sub_un (XO XH) = Just XH

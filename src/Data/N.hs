@@ -1,15 +1,20 @@
-module Data.Entier where
+module Data.N where
 
-import Data.Positive
+import Data.Np
 import Data.Z
 
-data Entier = Nul
-            | Pos Positive
+data N = Nul
+       | Pos Np
   deriving (Eq, Ord)
 
-un_suivi_de, zero_suivi_de :: Entier -> Entier
+eadd :: N -> N -> N
+eadd Nul y = y
+eadd x Nul = x
+eadd (Pos x) (Pos y) = Pos (add x y)
 
-un_suivi_de' :: Entier -> Positive
+un_suivi_de, zero_suivi_de :: N -> N
+
+un_suivi_de' :: N -> Np
 un_suivi_de' = \ case
     Nul -> XH
     Pos p -> XI p
@@ -20,13 +25,13 @@ zero_suivi_de = \ case
     Nul -> Nul
     Pos p -> Pos (XO p)
 
-double_moins_deux :: Positive -> Entier
+double_moins_deux :: Np -> N
 double_moins_deux = \ case
     XI x' -> Pos (XO (XO x'))
     XO x' -> Pos (XO (double_moins_un x'))
     XH -> Nul
 
-sub_pos :: Positive -> Positive -> Entier
+sub_pos :: Np -> Np -> N
 sub_pos x y =
   case x of
     XI x' ->
@@ -45,7 +50,7 @@ sub_pos x y =
         XO y' -> double_moins_deux y'
         XH -> Nul
 
-sub_neg :: Positive -> Positive -> Entier
+sub_neg :: Np -> Np -> N
 sub_neg x y =
   case x of
     XI x' ->
@@ -64,7 +69,7 @@ sub_neg x y =
         XO y' -> Pos (double_moins_un y')
         XH -> Nul
 
-zabs :: Z -> Entier
+zabs :: Z -> N
 zabs = \ case
     ZERO -> Nul
     POS p -> Pos p
