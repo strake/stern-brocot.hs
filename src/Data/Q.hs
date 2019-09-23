@@ -1,6 +1,7 @@
 module Data.Q where
 
 import Control.Applicative
+import Data.Bool (bool)
 import Data.Maybe (fromMaybe)
 import Numeric.Natural (Natural)
 import qualified Text.ParserCombinators.ReadP as ReadP
@@ -80,30 +81,14 @@ fraction_encoding m n = case m * n of
 qhomographic_sign
  :: Z -> Z -> Z -> Z -> Qpositive
  -> (Z, ((Z, Z, Z, Z), Qpositive))
-qhomographic_sign a b c d p = case p of
-    NR q -> blah $ qhomographic_sign a (a + b) c (c + d) q
-    DL q -> blah $ qhomographic_sign (a + b) b (c + d) d q
-    One -> (signum (a + b) * signum (c + d), w)
+qhomographic_sign a b c d p = case (p, o) of
+    (NR q, ZERO) -> qhomographic_sign a (a + b) c (c + d) q
+    (DL q, ZERO) -> qhomographic_sign (a + b) b (c + d) d q
+    _ -> (signum o1 * signum o2, ((a, b, c, d), p))
   where
     o1 = outside [a, b]
     o2 = outside [c, d]
-
-    w = ((a, b, c, d), p)
-
-    blah y = case (b, d) of
-        (ZERO, ZERO) -> (signum a * signum c, w)
-        (ZERO, _) -> case o2 of
-            POS _ -> (signum a, w)
-            NEG _ -> (negate (signum a), w)
-            ZERO -> y
-        (_, ZERO) -> case o1 of
-            POS _ -> (signum c, w)
-            NEG _ -> (negate (signum c), w)
-            ZERO -> y
-        _ -> case o1 * o2 of
-            POS _ -> (POS XH, w)
-            NEG _ -> (NEG XH, w)
-            ZERO -> y
+    o = bool 1 o1 (0 /= b) * bool 1 o2 (0 /= d)
 
 qhomographic_Qpositive_to_Qpositive :: Z -> Z -> Z -> Z -> Qpositive -> Qpositive
 qhomographic_Qpositive_to_Qpositive a b c d = \ case
@@ -141,42 +126,28 @@ qquadratic_sign
  :: Z -> Z -> Z -> Z -> Z -> Z -> Z -> Z
  -> Qpositive -> Qpositive
  -> (Z, ((Z, Z, Z, Z, Z, Z, Z, Z), (Qpositive, Qpositive)))
-qquadratic_sign a b c d e f g h p1 p2 = case (p1, p2) of
-    (NR xs, NR ys) -> blah $
-        qquadratic_sign
-        a (a + b) (a + c) (a + b + c + d) e (e + f) (e + g) (e + f + g + h) xs ys
-    (NR xs, DL ys) -> blah $
-        qquadratic_sign
-        (a + b) b (a + b + c + d) (b + d) (e + f) f (e + f + g + h) (f + h) xs ys
-    (DL xs, NR ys) -> blah $
-        qquadratic_sign
-        (a + c) (a + b + c + d) c (c + d) (e + g) (e + f + g + h) g (g + h) xs ys
-    (DL xs, DL ys) -> blah $
-        qquadratic_sign
-        (a + b + c + d) (b + d) (c + d) d (e + f + g + h) (f + h) (g + h) h xs ys
-    (_, One) ->
+qquadratic_sign a b c d e f g h p1 p2 = case (p1, p2, o') of
+    (_, One, _) ->
         let (s', ((a', b', c', d'), p')) = qhomographic_sign (a + b) (c + d) (e + f) (g + h) p1
         in (s', ((ZERO, a', ZERO, b', ZERO, c', ZERO, d'), (p', One)))
-    (One, _) ->
+    (One, _, _) ->
         let (s', ((a', b', c', d'), p')) = qhomographic_sign (a + c) (b + d) (e + g) (f + h) p2
         in (s', ((ZERO, ZERO, a', b', ZERO, ZERO, c', d'), (One, p')))
+    (NR xs, NR ys, ZERO) -> qquadratic_sign
+        a (a + b) (a + c) (a + b + c + d) e (e + f) (e + g) (e + f + g + h) xs ys
+    (NR xs, DL ys, ZERO) -> qquadratic_sign
+        (a + b) b (a + b + c + d) (b + d) (e + f) f (e + f + g + h) (f + h) xs ys
+    (DL xs, NR ys, ZERO) -> qquadratic_sign
+        (a + c) (a + b + c + d) c (c + d) (e + g) (e + f + g + h) g (g + h) xs ys
+    (DL xs, DL ys, ZERO) -> qquadratic_sign
+        (a + b + c + d) (b + d) (c + d) d (e + f + g + h) (f + h) (g + h) h xs ys
+    _ -> (signum o1 * signum o2, ((a, b, c, d, e, f, g, h), (p1, p2)))
   where
     o1 = outside [a, b, c, d]
     o2 = outside [e, f, g, h]
-
-    blah r = case (b, c, d, f, g, h) of
-        (ZERO, ZERO, ZERO, ZERO, ZERO, ZERO) -> (signum a * signum e, w)
-        (ZERO, ZERO, ZERO, _, _, _)
-          | POS (XO XH) < o2 -> (signum a, w)
-          | NEG (XO XH) > o2 -> (negate (signum a), w)
-        (_, _, _, ZERO, ZERO, ZERO)
-          | POS (XO XH) < o1 -> (signum e, w)
-          | NEG (XO XH) > o1 -> (negate (signum e), w)
-        (_, _, _, _, _, _)
-          | inside_square_1_dec_inf o1 o2 -> (POS XH, w)
-          | inside_square_2_dec_inf o1 o2 -> (NEG XH, w)
-        _ -> r
-      where w = ((a, b, c, d, e, f, g, h), (p1, p2))
+    o1' = iterate ((-) <*> signum) o1 !! 2
+    o2' = iterate ((-) <*> signum) o2 !! 2
+    o' = bool 1 o1' ((0, 0, 0) /= (b, c, d)) * bool 1 o2' ((0, 0, 0) /= (f, g, h))
 
 qquadratic_Qpositive_to_Qpositive :: Z -> Z -> Z -> Z -> Z -> Z -> Z -> Z -> Qpositive -> Qpositive -> Qpositive
 qquadratic_Qpositive_to_Qpositive a b c d e f g h p q = case (p, q) of

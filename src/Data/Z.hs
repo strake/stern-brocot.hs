@@ -66,16 +66,6 @@ fromZ (NEG n) = negate . fromIntegral $ fromPos n
 top_more_informative :: Z -> Z -> Z -> Z -> Bool
 top_more_informative a b c d = a >= c && b >= d && (a > c || b > d)
 
-inside_square_1_dec_inf, inside_square_2_dec_inf :: Z -> Z -> Bool
-
-inside_square_1_dec_inf o1 o2 =
-  POS (XO XH) < o1 && POS (XO XH) < o2 ||
-  NEG (XO XH) > o1 && NEG (XO XH) > o2
-
-inside_square_2_dec_inf o1 o2 =
-  POS (XO XH) < o1 && NEG (XO XH) > o2 ||
-  NEG (XO XH) > o1 && POS (XO XH) < o2
-
 quadratic_top_more_informative, same_ratio_dec_inf :: Z -> Z -> Z -> Z -> Z -> Z -> Z -> Z -> Bool
 quadratic_top_more_informative a b c d e f g h =
   e <= a && f <= b && g <= c && h <= d && (e < a || f < b || g < c || h < d)
