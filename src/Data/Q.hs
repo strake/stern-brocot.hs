@@ -1,9 +1,14 @@
 module Data.Q where
 
+import Prelude hiding (Num (..), Fractional (..))
+import Prelude (abs, fromRational, fromInteger, negate, signum)
+import qualified Prelude as Base
+import Algebra
 import Control.Applicative
 import Data.Bool (bool)
 import Data.Maybe (fromMaybe)
 import Numeric.Natural (Natural)
+import qualified Relation.Binary.Comparison as A
 import qualified Text.ParserCombinators.ReadP as ReadP
 import qualified Text.ParserCombinators.ReadPrec as ReadPrec
 import Text.Read (Read (..))
@@ -19,12 +24,26 @@ data Qp = NR Qp
         | One
   deriving (Eq)
 
+instance A.PartialEq Qp where (≡) = (==)
+{-
+instance A.Preord Qp where (≤) = (<=)
+instance A.PartialOrd Z where tryCompare x y = Just (compare x y)
+instance A.Ord Z where compare = compare
+-}
+
 data Q = Zero
        | Qpos Qp
        | Qneg Qp
   deriving (Eq)
 
-instance Num Q where
+instance A.PartialEq Q where (≡) = (==)
+{-
+instance A.Preord Qp where (≤) = (<=)
+instance A.PartialOrd Z where tryCompare x y = Just (compare x y)
+instance A.Ord Z where compare = compare
+-}
+
+instance Base.Num Q where
     (+) = qquadratic 0 1 1 0 0 0 0 1
     (-) = qquadratic 0 1 (-1) 0 0 0 0 1
     (*) = qquadratic 1 0 0 0 0 0 0 1
@@ -35,7 +54,7 @@ instance Num Q where
     signum (Qneg _) = negate 1
     fromInteger = fromRational . fromInteger
 
-instance Fractional Q where
+instance Base.Fractional Q where
     (/) = qquadratic 0 1 0 0 0 0 1 0
     fromRational q = fraction_encoding (fromIntegral $ Base.numerator q) (fromIntegral $ Base.denominator q)
 
@@ -112,11 +131,11 @@ qhomographic a b c d = \ case
 
 qhomographic' :: N -> N -> N -> N -> Qp -> Qp
 qhomographic' a b c d = \ case
-    One -> positive_fraction_encoding (fromN $ eadd a b) (fromN $ eadd c d)
+    One -> positive_fraction_encoding (fromN $ a + b) (fromN $ c + d)
     p | Just (x, y) <- N.top_more_informative a b c d -> NR (qhomographic' x y c d p)
       | Just (x, y) <- N.top_more_informative c d a b -> DL (qhomographic' a b x y p)
-    NR q -> qhomographic' a (eadd a b) c (eadd c d) q
-    DL q -> qhomographic' (eadd a b) b (eadd c d) d q
+    NR q -> qhomographic' a (a + b) c (c + d) q
+    DL q -> qhomographic' (a + b) b (c + d) d q
 
 qquadratic_sign
  :: Z -> Z -> Z -> Z -> Z -> Z -> Z -> Z
@@ -186,7 +205,6 @@ qquadratic' a b c d e f g h p q = case (p, q) of
                      (a + c) (a + b + c + d) c (c + d) (e + g) (e + f + g + h) g (g + h) x ys
     (DL x, DL ys) -> qquadratic'
                      (a + b + c + d) (b + d) (c + d) d (e + f + g + h) (f + h) (g + h) h x ys
-  where (+) = eadd
 
 instance Show Qp where
     show = \ case

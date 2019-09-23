@@ -1,7 +1,12 @@
 module Data.Z where
 
+import Prelude hiding (Num (..))
+import Prelude (negate, signum)
+import qualified Prelude as Base
+import Algebra
 import Data.Foldable (foldMap)
 import Data.Monoid (Sum (..))
+import qualified Relation.Binary.Comparison as A
 
 import Data.N hiding (sub')
 import Data.Np
@@ -11,7 +16,7 @@ data Z = ZERO
        | NEG Np
   deriving (Eq)
 
-instance Num Z where
+instance Base.Num Z where
     ZERO + y = y
     x + ZERO = x
     POS x + POS y = POS (add x y)
@@ -44,6 +49,9 @@ instance Num Z where
         NEG p -> POS p
     fromInteger = toZ
 
+instance Group (Sum Z) where
+    invert (Sum a) = Sum (negate a)
+
 instance Ord Z where
     compare ZERO ZERO = EQ
     compare ZERO (POS _) = LT
@@ -52,6 +60,12 @@ instance Ord Z where
     compare (POS _) _ = GT
     compare (NEG x) (NEG y) = ccompare y x EQ
     compare (NEG _) _ = LT
+
+instance A.PartialEq Z where (≡) = (==)
+instance A.Eq Z
+instance A.Preord Z where (≤) = (<=)
+instance A.PartialOrd Z where tryCompare x y = Just (compare x y)
+instance A.Ord Z where compare = compare
 
 toZ :: Integral a => a -> Z
 toZ x = case compare x 0 of
@@ -64,12 +78,7 @@ fromZ ZERO = 0
 fromZ (POS n) = id     . fromIntegral $ fromPos n
 fromZ (NEG n) = negate . fromIntegral $ fromPos n
 
-top_more_informative :: Z -> Z -> Z -> Z -> Bool
-top_more_informative a b c d = a >= c && b >= d && (a > c || b > d)
-
-quadratic_top_more_informative, same_ratio_dec_inf :: Z -> Z -> Z -> Z -> Z -> Z -> Z -> Z -> Bool
-quadratic_top_more_informative a b c d e f g h =
-  e <= a && f <= b && g <= c && h <= d && (e < a || f < b || g < c || h < d)
+same_ratio_dec_inf :: Z -> Z -> Z -> Z -> Z -> Z -> Z -> Z -> Bool
 same_ratio_dec_inf a b c d e f g h =
   (a * f, b * g, c * h, a * g, a * h, b * h) ==
   (b * e, c * f, d * g, c * e, d * e, d * f)

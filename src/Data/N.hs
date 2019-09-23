@@ -1,5 +1,7 @@
 module Data.N where
 
+import Data.Semigroup (Semigroup (..), Sum (..))
+
 import Data.Np hiding (sub')
 import qualified Data.Np as Np
 
@@ -7,10 +9,10 @@ data N = Nul
        | Pos Np
   deriving (Eq, Ord)
 
-eadd :: N -> N -> N
-eadd Nul y = y
-eadd x Nul = x
-eadd (Pos x) (Pos y) = Pos (add x y)
+instance {-# OVERLAPPING #-} Semigroup (Sum N) where
+    Sum Nul <> y = y
+    x <> Sum Nul = x
+    Sum (Pos x) <> Sum (Pos y) = Pos <$> Sum x <> Sum y
 
 un_suivi_de, zero_suivi_de :: N -> N
 

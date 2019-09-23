@@ -1,5 +1,6 @@
 module Data.Np where
 
+import Data.Semigroup (Semigroup (..), Sum (..))
 import Numeric.Natural
 
 data Np = XI Np
@@ -9,6 +10,9 @@ data Np = XI Np
 
 instance Ord Np where
     compare x y = ccompare x y EQ
+
+instance {-# OVERLAPPING #-} Semigroup (Sum Np) where
+    Sum x <> Sum y = Sum (add x y)
 
 add :: Np -> Np -> Np
 add x y =
