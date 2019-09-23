@@ -10,9 +10,9 @@ import Text.Read (Read (..))
 
 import qualified Data.Ratio as Base
 
-import Data.N
-import Data.Np
-import Data.Z
+import Data.N  as N
+import Data.Np as Np
+import Data.Z  as Z
 
 data Qp = NR Qp
         | DL Qp
@@ -56,7 +56,7 @@ fromQpos (NR q) = 1 + fromQpos q
 fromQpos (DL q) = 1 / (1 + 1 / fromQpos q)
 
 positive_fraction_encoding' :: Np -> Np -> Qp
-positive_fraction_encoding' x y = case sub' x y of
+positive_fraction_encoding' x y = case Np.sub' x y of
     EQ' -> One
     LT' z -> DL (positive_fraction_encoding' x z)
     GT' z -> DL (positive_fraction_encoding' z y)
@@ -91,37 +91,32 @@ qhomographic_sign a b c d p = case (p, o) of
     o2 = outside [c, d]
     o = bool 1 o1 (0 /= b) * bool 1 o2 (0 /= d)
 
-qhomographic_Qp_to_Qp :: Z -> Z -> Z -> Z -> Qp -> Qp
-qhomographic_Qp_to_Qp a b c d = \ case
-    One -> positive_fraction_encoding (a + b) (c + d)
-    p | top_more_informative a b c d -> NR
-           (qhomographic_Qp_to_Qp (a - c) (b - d) c d p)
-      | top_more_informative c d a b -> DL
-           (qhomographic_Qp_to_Qp a b (c - a) (d - b) p)
-    NR q -> qhomographic_Qp_to_Qp a (a + b) c (c + d) q
-    DL q -> qhomographic_Qp_to_Qp (a + b) b (c + d) d q
-
 qhomographic_Qp_to_Q :: Z -> Z -> Z -> Z -> Qp -> Q
 qhomographic_Qp_to_Q a b c d p
   | a * d == b * c = case d of
         ZERO -> fraction_encoding a c
         _    -> fraction_encoding b d
-  | otherwise = case (s', a' + b') of
-        (ZERO, _) -> Zero
-        (_, ZERO) -> undefined
-        (POS _, POS _) -> Qpos (blah id id)
-        (POS _, NEG _) -> Qpos (blah negate negate)
-        (NEG _, POS _) -> Qneg (blah id negate)
-        (NEG _, NEG _) -> Qneg (blah negate id)
+  | otherwise = case s' of
+        ZERO -> Zero
+        POS _ -> Qpos q
+        NEG _ -> Qneg q
   where
     (s', ((a', b', c', d'), p')) = qhomographic_sign a b c d p
-    blah φ χ = qhomographic_Qp_to_Qp (φ a') (φ b') (χ c') (χ d') p'
+    q = qhomographic' (zabs a') (zabs b') (zabs c') (zabs d') p'
 
 qhomographic :: Z -> Z -> Z -> Z -> Q -> Q
 qhomographic a b c d = \ case
     Zero -> fraction_encoding b d
     Qpos p -> qhomographic_Qp_to_Q a b c d p
     Qneg p -> qhomographic_Qp_to_Q (negate a) b (negate c) d p
+
+qhomographic' :: N -> N -> N -> N -> Qp -> Qp
+qhomographic' a b c d = \ case
+    One -> positive_fraction_encoding (fromN $ eadd a b) (fromN $ eadd c d)
+    p | Just (x, y) <- N.top_more_informative a b c d -> NR (qhomographic' x y c d p)
+      | Just (x, y) <- N.top_more_informative c d a b -> DL (qhomographic' a b x y p)
+    NR q -> qhomographic' a (eadd a b) c (eadd c d) q
+    DL q -> qhomographic' (eadd a b) b (eadd c d) d q
 
 qquadratic_sign
  :: Z -> Z -> Z -> Z -> Z -> Z -> Z -> Z
@@ -150,23 +145,6 @@ qquadratic_sign a b c d e f g h p1 p2 = case (p1, p2, o') of
     o2' = iterate ((-) <*> signum) o2 !! 2
     o' = bool 1 o1' ((0, 0, 0) /= (b, c, d)) * bool 1 o2' ((0, 0, 0) /= (f, g, h))
 
-qquadratic_Qp_to_Qp :: Z -> Z -> Z -> Z -> Z -> Z -> Z -> Z -> Qp -> Qp -> Qp
-qquadratic_Qp_to_Qp a b c d e f g h p q = case (p, q) of
-    (One, _) -> qhomographic_Qp_to_Qp (a + c) (b + d) (e + g) (f + h) q
-    (_, One) -> qhomographic_Qp_to_Qp (a + b) (c + d) (e + f) (g + h) p
-    _ | quadratic_top_more_informative a b c d e f g h -> NR
-            (qquadratic_Qp_to_Qp (a - e) (b - f) (c - g) (d - h) e f g h p q)
-    _ | quadratic_top_more_informative e f g h a b c d -> DL
-            (qquadratic_Qp_to_Qp a b c d (e - a) (f - b) (g - c) (h - d) p q)
-    (NR x, NR ys) -> qquadratic_Qp_to_Qp
-                     a (a + b) (a + c) (a + b + c + d) e (e + f) (e + g) (e + f + g + h) x ys
-    (NR x, DL ys) -> qquadratic_Qp_to_Qp
-                     (a + b) b (a + b + c + d) (b + d) (e + f) f (e + f + g + h) (f + h) x ys
-    (DL x, NR ys) -> qquadratic_Qp_to_Qp
-                     (a + c) (a + b + c + d) c (c + d) (e + g) (e + f + g + h) g (g + h) x ys
-    (DL x, DL ys) -> qquadratic_Qp_to_Qp
-                     (a + b + c + d) (b + d) (c + d) d (e + f + g + h) (f + h) (g + h) h x ys
-
 qquadratic_Qp_to_Q :: Z -> Z -> Z -> Z -> Z -> Z -> Z -> Z -> Qp -> Qp -> Q
 qquadratic_Qp_to_Q a b c d e f g h p1 p2
   | same_ratio_dec_inf a b c d e f g h = case (e, f, g, h) of
@@ -175,16 +153,13 @@ qquadratic_Qp_to_Q a b c d e f g h p1 p2
         (ZERO, ZERO, _,    _)    -> fraction_encoding c g
         (ZERO, _,    _,    _)    -> fraction_encoding b f
         (_,    _,    _,    _)    -> fraction_encoding a e
-  | otherwise = case (s', a' + b' + c' + d') of
-         (ZERO, _) -> Zero
-         (_, ZERO) -> undefined
-         (POS _, POS _) -> Qpos (blah id id)
-         (POS _, NEG _) -> Qpos (blah negate negate)
-         (NEG _, POS _) -> Qneg (blah id negate)
-         (NEG _, NEG _) -> Qneg (blah negate id)
+  | otherwise = case s' of
+         ZERO -> Zero
+         POS _ -> Qpos q
+         NEG _ -> Qneg q
   where
     (s', ((a', b', c', d', e', f', g', h'), (p1', p2'))) = qquadratic_sign a b c d e f g h p1 p2
-    blah φ χ = qquadratic_Qp_to_Qp (φ a') (φ b') (φ c') (φ d') (χ e') (χ f') (χ g') (χ h') p1' p2'
+    q = qquadratic' (zabs a') (zabs b') (zabs c') (zabs d') (zabs e') (zabs f') (zabs g') (zabs h') p1' p2'
 
 qquadratic :: Z -> Z -> Z -> Z -> Z -> Z -> Z -> Z -> Q -> Q -> Q
 qquadratic a b c d e f g h = curry $ \ case
@@ -194,6 +169,24 @@ qquadratic a b c d e f g h = curry $ \ case
     (Qpos p1, Qneg p2) -> qquadratic_Qp_to_Q (negate a) b (negate c) d (negate e) f (negate g) h p1 p2
     (Qneg p1, Qpos p2) -> qquadratic_Qp_to_Q (negate a) (negate b) c d (negate e) (negate f) g h p1 p2
     (Qneg p1, Qneg p2) -> qquadratic_Qp_to_Q a (negate b) (negate c) d e (negate f) (negate g) h p1 p2
+
+qquadratic' :: N -> N -> N -> N -> N -> N -> N -> N -> Qp -> Qp -> Qp
+qquadratic' a b c d e f g h p q = case (p, q) of
+    (One, _) -> qhomographic' (a + c) (b + d) (e + g) (f + h) q
+    (_, One) -> qhomographic' (a + b) (c + d) (e + f) (g + h) p
+    _ | Just (w, x, y, z) <- N.quadratic_top_more_informative a b c d e f g h -> NR
+            (qquadratic' w x y z e f g h p q)
+    _ | Just (w, x, y, z) <- N.quadratic_top_more_informative e f g h a b c d -> DL
+            (qquadratic' a b c d w x y z p q)
+    (NR x, NR ys) -> qquadratic'
+                     a (a + b) (a + c) (a + b + c + d) e (e + f) (e + g) (e + f + g + h) x ys
+    (NR x, DL ys) -> qquadratic'
+                     (a + b) b (a + b + c + d) (b + d) (e + f) f (e + f + g + h) (f + h) x ys
+    (DL x, NR ys) -> qquadratic'
+                     (a + c) (a + b + c + d) c (c + d) (e + g) (e + f + g + h) g (g + h) x ys
+    (DL x, DL ys) -> qquadratic'
+                     (a + b + c + d) (b + d) (c + d) d (e + f + g + h) (f + h) (g + h) h x ys
+  where (+) = eadd
 
 instance Show Qp where
     show = \ case

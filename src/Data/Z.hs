@@ -3,6 +3,7 @@ module Data.Z where
 import Data.Foldable (foldMap)
 import Data.Monoid (Sum (..))
 
+import Data.N hiding (sub')
 import Data.Np
 
 data Z = ZERO
@@ -75,3 +76,13 @@ same_ratio_dec_inf a b c d e f g h =
 
 outside :: Foldable f => f Z -> Z
 outside = getSum . foldMap (Sum . signum)
+
+zabs :: Z -> N
+zabs = \ case
+    ZERO -> Nul
+    POS p -> Pos p
+    NEG p -> Pos p
+
+fromN :: N -> Z
+fromN Nul = ZERO
+fromN (Pos x) = POS x

@@ -1,7 +1,7 @@
 module Data.N where
 
-import Data.Np
-import Data.Z
+import Data.Np hiding (sub')
+import qualified Data.Np as Np
 
 data N = Nul
        | Pos Np
@@ -69,8 +69,18 @@ sub_neg x y =
         XO y' -> Pos (double_moins_un y')
         XH -> Nul
 
-zabs :: Z -> N
-zabs = \ case
-    ZERO -> Nul
-    POS p -> Pos p
-    NEG p -> Pos p
+sub' :: N -> N -> Maybe N
+sub' a Nul = Just a
+sub' Nul _ = Nothing
+sub' (Pos a) (Pos b) = case Np.sub' a b of
+    GT' c -> Just (Pos c)
+    EQ' -> Just Nul
+    _ -> Nothing
+
+top_more_informative :: N -> N -> N -> N -> Maybe (N, N)
+top_more_informative a b c d = [(x, y) | x <- sub' a c, y <- sub' b d, any (> Nul) [x, y]]
+
+quadratic_top_more_informative :: N -> N -> N -> N -> N -> N -> N -> N -> Maybe (N, N, N, N)
+quadratic_top_more_informative a b c d e f g h =
+    [(w, x, y, z) | w <- sub' a e, x <- sub' b f, y <- sub' c g, z <- sub' d h
+                  , any (> Nul) [w, x, y, z]]
