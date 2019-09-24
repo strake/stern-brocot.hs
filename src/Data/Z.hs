@@ -1,25 +1,21 @@
 module Data.Z where
 
-import Prelude hiding (Num (..))
-import Prelude (negate, signum)
-import qualified Prelude as Base
-import Algebra
-import Data.Foldable (foldMap)
-import Data.Monoid (Sum (..))
-import qualified Relation.Binary.Comparison as A
+import "base" Prelude as Base (Num (negate, signum))
+import qualified "base" Prelude as Base
 
+import Data.Difference
 import Data.N hiding (sub')
 import Data.Np
 
 data Z = ZERO
        | POS Np
        | NEG Np
-  deriving (Eq)
+  deriving (Base.Eq)
 
 instance Base.Num Z where
     ZERO + y = y
     x + ZERO = x
-    POS x + POS y = POS (add x y)
+    POS x + POS y = POS (x + y)
     POS x + NEG y = case sub' x y of
         EQ' -> ZERO
         LT' z -> NEG z
@@ -28,13 +24,13 @@ instance Base.Num Z where
         EQ' -> ZERO
         LT' z -> POS z
         GT' z -> NEG z
-    NEG x + NEG y = NEG (add x y)
+    NEG x + NEG y = NEG (x + y)
     ZERO * _ = ZERO
     _ * ZERO = ZERO
-    POS x * POS y = POS (times x y)
-    POS x * NEG y = NEG (times x y)
-    NEG x * POS y = NEG (times x y)
-    NEG x * NEG y = POS (times x y)
+    POS x * POS y = POS (x * y)
+    POS x * NEG y = NEG (x * y)
+    NEG x * POS y = NEG (x * y)
+    NEG x * NEG y = POS (x * y)
     abs = \ case
         ZERO -> ZERO
         POS p -> POS p
@@ -49,38 +45,35 @@ instance Base.Num Z where
         NEG p -> POS p
     fromInteger = toZ
 
-instance Group (Sum Z) where
-    invert (Sum a) = Sum (negate a)
-
-instance Ord Z where
+instance Base.Ord Z where
     compare ZERO ZERO = EQ
     compare ZERO (POS _) = LT
     compare ZERO (NEG _) = GT
-    compare (POS x) (POS y) = ccompare x y EQ
+    compare (POS x) (POS y) = compare x y
     compare (POS _) _ = GT
-    compare (NEG x) (NEG y) = ccompare y x EQ
+    compare (NEG x) (NEG y) = compare y x
     compare (NEG _) _ = LT
 
-instance A.PartialEq Z where (≡) = (==)
-instance A.Eq Z
-instance A.Preord Z where (≤) = (<=)
-instance A.PartialOrd Z where tryCompare x y = Just (compare x y)
-instance A.Ord Z where compare = compare
+instance PartialEq Z where (≡) = (Base.==)
+instance Eq Z
+instance Preord Z where (≤) = (Base.<=)
+instance PartialOrd Z where tryCompare x y = Just (compare x y)
+instance Ord Z where compare = Base.compare
 
-toZ :: Integral a => a -> Z
-toZ x = case compare x 0 of
+toZ :: Base.Integral a => a -> Z
+toZ x = case Base.compare x 0 of
     EQ -> ZERO
-    GT -> POS (nattoPos x)
-    LT -> NEG (nattoPos (negate x))
+    GT -> POS (toNp x)
+    LT -> NEG (toNp (negate x))
 
-fromZ :: Z -> Integer
+fromZ :: Z -> Base.Integer
 fromZ ZERO = 0
-fromZ (POS n) = id     . fromIntegral $ fromPos n
-fromZ (NEG n) = negate . fromIntegral $ fromPos n
+fromZ (POS n) = id     . Base.fromIntegral $ fromNp n
+fromZ (NEG n) = negate . Base.fromIntegral $ fromNp n
 
 same_ratio_dec_inf :: Z -> Z -> Z -> Z -> Z -> Z -> Z -> Z -> Bool
 same_ratio_dec_inf a b c d e f g h =
-  (a * f, b * g, c * h, a * g, a * h, b * h) ==
+  (a * f, b * g, c * h, a * g, a * h, b * h) Base.==
   (b * e, c * f, d * g, c * e, d * e, d * f)
 
 outside :: Foldable f => f Z -> Z

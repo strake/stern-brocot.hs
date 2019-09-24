@@ -1,20 +1,15 @@
 module Data.Q where
 
-import Prelude hiding (Num (..), Fractional (..))
-import Prelude (abs, fromRational, fromInteger, negate, signum)
-import qualified Prelude as Base
-import Algebra
-import Control.Applicative
-import Data.Bool (bool)
-import Data.Maybe (fromMaybe)
-import Numeric.Natural (Natural)
-import qualified Relation.Binary.Comparison as A
+import "base" Prelude (abs, fromRational, fromIntegral, fromInteger, negate, signum, toRational)
+import qualified "base" Prelude as Base
 import qualified Text.ParserCombinators.ReadP as ReadP
 import qualified Text.ParserCombinators.ReadPrec as ReadPrec
 import Text.Read (Read (..))
+import Text.Show (Show (..))
 
 import qualified Data.Ratio as Base
 
+import Data.Difference
 import Data.N  as N
 import Data.Np as Np
 import Data.Z  as Z
@@ -22,9 +17,9 @@ import Data.Z  as Z
 data Qp = NR Qp
         | DL Qp
         | One
-  deriving (Eq)
+  deriving (Base.Eq)
 
-instance A.PartialEq Qp where (≡) = (==)
+instance PartialEq Qp where (≡) = (Base.==)
 {-
 instance A.Preord Qp where (≤) = (<=)
 instance A.PartialOrd Z where tryCompare x y = Just (compare x y)
@@ -34,9 +29,9 @@ instance A.Ord Z where compare = compare
 data Q = Zero
        | Qpos Qp
        | Qneg Qp
-  deriving (Eq)
+  deriving (Base.Eq)
 
-instance A.PartialEq Q where (≡) = (==)
+instance PartialEq Q where (≡) = (Base.==)
 {-
 instance A.Preord Qp where (≤) = (<=)
 instance A.PartialOrd Z where tryCompare x y = Just (compare x y)
@@ -108,11 +103,11 @@ qhomographic_sign a b c d p = case (p, o) of
   where
     o1 = outside [a, b]
     o2 = outside [c, d]
-    o = bool 1 o1 (0 /= b) * bool 1 o2 (0 /= d)
+    o = bool 1 o1 (0 ≢ b) * bool 1 o2 (0 ≢ d)
 
 qhomographic_Qp_to_Q :: Z -> Z -> Z -> Z -> Qp -> Q
 qhomographic_Qp_to_Q a b c d p
-  | a * d == b * c = case d of
+  | a * d ≡ b * c = case d of
         ZERO -> fraction_encoding a c
         _    -> fraction_encoding b d
   | otherwise = case s' of
@@ -160,9 +155,9 @@ qquadratic_sign a b c d e f g h p q = case (p, q, o') of
   where
     o1 = outside [a, b, c, d]
     o2 = outside [e, f, g, h]
-    o1' = iterate ((-) <*> signum) o1 !! 2
-    o2' = iterate ((-) <*> signum) o2 !! 2
-    o' = bool 1 o1' ((0, 0, 0) /= (b, c, d)) * bool 1 o2' ((0, 0, 0) /= (f, g, h))
+    o1' = Base.iterate ((-) <*> signum) o1 Base.!! 2
+    o2' = Base.iterate ((-) <*> signum) o2 Base.!! 2
+    o' = bool 1 o1' ((0, 0, 0) ≢ (b, c, d)) * bool 1 o2' ((0, 0, 0) ≢ (f, g, h))
 
 qquadratic_Qp_to_Q :: Z -> Z -> Z -> Z -> Z -> Z -> Z -> Z -> Qp -> Qp -> Q
 qquadratic_Qp_to_Q a b c d e f g h p q

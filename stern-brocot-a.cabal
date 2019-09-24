@@ -14,16 +14,19 @@ cabal-version:       >=1.10
 
 library
   hs-source-dirs:      src
-  exposed-modules:     Data.N
+  exposed-modules:     Data.Difference
+                     , Data.N
                      , Data.Np
                      , Data.Q
                      , Data.Z
-  build-depends:       alg
+  other-modules:       Prelude
+  build-depends:       alg >= 0.2.11 && < 0.3
                      , base >= 4.7 && < 5
                      , base-unicode-symbols
                      , util
   default-language:    Haskell2010
   default-extensions:  UnicodeSyntax
+                     , PackageImports
                      , LambdaCase
                      , EmptyCase
                      , InstanceSigs

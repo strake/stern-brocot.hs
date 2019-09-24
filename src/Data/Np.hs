@@ -1,104 +1,79 @@
-module Data.Np where
+module Data.Np (Np (..), toNp, fromNp, sub', double_moins_un) where
 
-import Data.Semigroup (Semigroup (..), Sum (..))
-import Numeric.Natural
+import qualified "base" Prelude as Base
+
+import Data.Difference
 
 data Np = XI Np
         | XO Np
         | XH
-  deriving (Eq)
+  deriving (Base.Eq)
 
-instance Ord Np where
-    compare x y = ccompare x y EQ
+instance PartialEq Np where (≡) = (Base.==)
+instance Preord Np where (≤) = (Base.<=)
+instance Eq Np
+instance PartialOrd Np where tryCompare x y = Just (compare x y)
+instance Ord Np where compare = Base.compare
 
 instance {-# OVERLAPPING #-} Semigroup (Sum Np) where
     Sum x <> Sum y = Sum (add x y)
 
-add :: Np -> Np -> Np
-add x y =
-  case x of
-    XI x' ->
-      case y of
-        XI y' -> XO (add_carry x' y')
-        XO y' -> XI (add x' y')
-        XH -> XO (add_un x')
-    XO x' ->
-      case y of
-        XI y' -> XI (add x' y')
-        XO y' -> XO (add x' y')
-        XH -> XI x'
-    XH ->
-      case y of
-        XI y' -> XO (add_un y')
-        XO y' -> XI y'
-        XH -> XO XH
+instance {-# OVERLAPPING #-} Semigroup (Product Np) where
+    Product x <> Product y = Product (times x y)
 
-add_carry :: Np -> Np -> Np
-add_carry x y =
-  case x of
-    XI x' ->
-      case y of
-        XI y' -> XI (add_carry x' y')
-        XO y' -> XO (add_carry x' y')
-        XH -> XI (add_un x')
-    XO x' ->
-      case y of
-        XI y' -> XO (add_carry x' y')
-        XO y' -> XI (add x' y')
-        XH -> XO (add_un x')
-    XH ->
-      case y of
-        XI y' -> XI (add_un y')
-        XO y' -> XO (add_un y')
-        XH -> XI XH
+instance {-# OVERLAPPING #-} Monoid (Product Np) where
+    mempty = Product XH
+
+add :: Np -> Np -> Np
+add = go False where
+    go c = curry $ \ case
+        (XI x, XI y) -> bool XO XI c (go True  x y)
+        (XI x, XO y) -> bool XI XO c (go c     x y)
+        (XI x, XH)   -> bool XO XI c (add_un x)
+        (XO x, XO y) -> bool XO XI c (go False x y)
+        (XO x, XH)
+          | not c    -> XI x
+          | True     -> XO (add_un x)
+        (XH,   XH)   -> bool XO XI c XH
+        (x,    y)    -> go c y x
 
 double_moins_un :: Np -> Np
-double_moins_un x =
-  case x of
-    XI x' -> XI (XO x')
-    XO x' -> XI (double_moins_un x')
+double_moins_un = \ case
+    XI x -> XI (XO x)
+    XO x -> XI (double_moins_un x)
     XH -> XH
 
-ccompare :: Np -> Np -> Ordering -> Ordering
-ccompare x y r =
-  case x of
-    XI x' ->
-      case y of
-        XI y' -> ccompare x' y' r
-        XO y' -> ccompare x' y' GT
-        XH -> GT
-    XO x' ->
-      case y of
-        XI y' -> ccompare x' y' LT
-        XO y' -> ccompare x' y' r
-        XH -> GT
-    XH -> case y of
-            XI _ -> LT
-            XO _ -> LT
-            XH -> r
+instance Base.Ord Np where
+    compare = go EQ where
+        go r = curry $ \ case
+            (XH, XH) -> r
+            (XH, _)  -> LT
+            (_,  XH) -> GT
+            (XI x, XI y) -> go r  x y
+            (XI x, XO y) -> go GT x y
+            (XO x, XI y) -> go LT x y
+            (XO x, XO y) -> go r  x y
 
 times :: Np -> Np -> Np
 times x y = case x of
-    XI x' -> add y (XO (times x' y))
-    XO x' -> XO (times x' y)
+    XI x -> XO (times x y) + y
+    XO x -> XO (times x y)
     XH -> y
 
 add_un :: Np -> Np
 add_un = \ case
-    XI x' -> XO (add_un x')
-    XO x' -> XI x'
+    XI x -> XO (add_un x)
+    XO x -> XI x
     XH -> XO XH
 
-nattoPos :: Integral a => a -> Np
-nattoPos x
-  | 1 == x       = XH
-  | 1 == mod x 2 = XI (nattoPos (div x 2))
-  | otherwise    = XO (nattoPos (div x 2))
+toNp :: Base.Integral a => a -> Np
+toNp 1 = XH
+toNp x = bool XO XI (0 Base./= Base.mod x 2) (toNp (Base.div x 2))
 
-fromPos :: Np -> Natural
-fromPos XH = 1
-fromPos (XI n) = 2*fromPos n + 1
-fromPos (XO n) = 2*fromPos n
+fromNp :: Np -> Natural
+fromNp XH = 1
+fromNp (XI n) = 2*fromNp n + 1
+fromNp (XO n) = 2*fromNp n
 
 sub' :: Np -> Np -> Difference Np
 sub' (XI x) (XI y) = XO <$> sub' x y
@@ -119,6 +94,3 @@ sub_un XH = Nothing
 sub_un (XI n) = Just (XO n)
 sub_un (XO XH) = Just XH
 sub_un (XO n) = XI <$> sub_un n
-
-data Difference a = LT' a | EQ' | GT' a
-  deriving (Functor, Eq, Show)
