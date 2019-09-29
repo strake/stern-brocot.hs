@@ -32,6 +32,10 @@ instance {-# OVERLAPPING #-} Semigroup (Product N) where
 instance {-# OVERLAPPING #-} Monoid (Product N) where
     mempty = Product (Pos XH)
 
+instance FromInteger N where
+    fromInteger 0 = Nul
+    fromInteger n = Pos XH + fromInteger (n-1)
+
 un_suivi_de, zero_suivi_de :: N -> N
 
 un_suivi_de' :: N -> Np

@@ -20,11 +20,15 @@ main = defaultMain $ testGroup ""
      ],
      testGroup "Qpos"
      [testProperty "conversion" $ \ (Positive a) ->
-      a == fromQpos (toQpos a)
+      a == fromQpos (toQpos a),
+      testProperty "comparison" $ \ (Positive a) (Positive b) ->
+      compare a b == compare (toQpos a) (toQpos b)
      ],
      testGroup "Q"
      [testProperty "conversion" $ \ a ->
       a == fromQ (toQ a),
+      testProperty "comparison" $ \ a b ->
+      compare a b == compare (toQ a) (toQ b),
       testProperty "addition" $ \ a b ->
       a + b == fromQ (toQ a + toQ b),
       testProperty "subtraction" $ \ a b ->

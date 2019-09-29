@@ -60,6 +60,8 @@ instance Preord Z where (≤) = (Base.<=)
 instance PartialOrd Z where tryCompare x y = Just (compare x y)
 instance Ord Z where compare = Base.compare
 
+instance FromInteger Z where fromInteger = Base.fromInteger
+
 toZ :: Base.Integral a => a -> Z
 toZ x = case Base.compare x 0 of
     EQ -> ZERO

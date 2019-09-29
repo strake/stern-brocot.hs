@@ -1,6 +1,7 @@
+{-# LANGUAGE RebindableSyntax, ImplicitPrelude #-}
 module Data.Q where
 
-import "base" Prelude (abs, fromRational, fromIntegral, fromInteger, negate, signum, toRational)
+import "base" Prelude (abs, fromRational, fromIntegral, negate, signum, toRational)
 import qualified "base" Prelude as Base
 import qualified Text.ParserCombinators.ReadP as ReadP
 import qualified Text.ParserCombinators.ReadPrec as ReadPrec
@@ -20,11 +21,18 @@ data Qp = NR Qp
   deriving (Base.Eq)
 
 instance PartialEq Qp where (≡) = (Base.==)
-{-
-instance A.Preord Qp where (≤) = (<=)
-instance A.PartialOrd Z where tryCompare x y = Just (compare x y)
-instance A.Ord Z where compare = compare
--}
+instance Preord Qp where x ≤ y = GT ≢ compare x y
+instance Eq Qp
+instance PartialOrd Qp where tryCompare x y = Just (compare x y)
+instance Ord Qp where
+    compare x y = case qquadratic_Qp_to_Q 0 (1) (-1) 0 0 0 0 1 x y of
+        Zero -> EQ
+        Qpos _ -> GT
+        Qneg _ -> LT
+instance Base.Ord Qp where compare = compare
+
+instance {-# OVERLAPPING #-} Semigroup (Sum Qp) where
+    Sum x <> Sum y = Sum (qquadratic' 0 1 1 0 0 0 0 1 x y)
 
 data Q = Zero
        | Qpos Qp
@@ -32,11 +40,19 @@ data Q = Zero
   deriving (Base.Eq)
 
 instance PartialEq Q where (≡) = (Base.==)
-{-
-instance A.Preord Qp where (≤) = (<=)
-instance A.PartialOrd Z where tryCompare x y = Just (compare x y)
-instance A.Ord Z where compare = compare
--}
+instance Preord Q where x ≤ y = GT ≢ compare x y
+instance Eq Q
+instance PartialOrd Q where tryCompare x y = Just (compare x y)
+instance Ord Q where
+    compare = curry $ \ case
+        (Zero, Zero) -> EQ
+        (Zero, Qpos _) -> LT
+        (Zero, Qneg _) -> GT
+        (Qneg _, Qpos _) -> LT
+        (Qpos p, Qpos q) -> compare p q
+        (Qneg p, Qneg q) -> compare q p
+        (p, q) -> compare EQ $ compare q p
+instance Base.Ord Q where compare = compare
 
 instance Base.Num Q where
     (+) = qquadratic 0 1 1 0 0 0 0 1
@@ -47,11 +63,13 @@ instance Base.Num Q where
     signum Zero = 0
     signum (Qpos _) = 1
     signum (Qneg _) = negate 1
-    fromInteger = fromRational . fromInteger
+    fromInteger = fromRational . Base.fromInteger
 
 instance Base.Fractional Q where
     (/) = qquadratic 0 1 0 0 0 0 1 0
     fromRational q = fraction_encoding (fromIntegral $ Base.numerator q) (fromIntegral $ Base.denominator q)
+
+instance FromInteger Q where fromInteger = Base.fromInteger
 
 toQ :: Base.Rational -> Q
 toQ = fromRational
