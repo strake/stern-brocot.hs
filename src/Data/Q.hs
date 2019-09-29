@@ -56,7 +56,7 @@ instance Base.Ord Q where compare = compare
 
 instance Base.Num Q where
     (+) = qquadratic 0 1 1 0 0 0 0 1
-    (-) = qquadratic 0 1 (-1) 0 0 0 0 1
+    (-) = qquadratic 0 (1) (-1) 0 0 0 0 1
     (*) = qquadratic 1 0 0 0 0 0 0 1
     abs (Qneg qpos) = Qpos qpos
     abs q = q
