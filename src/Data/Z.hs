@@ -73,11 +73,6 @@ fromZ ZERO = 0
 fromZ (POS n) = id     . Base.fromIntegral $ fromNp n
 fromZ (NEG n) = negate . Base.fromIntegral $ fromNp n
 
-same_ratio_dec_inf :: Z -> Z -> Z -> Z -> Z -> Z -> Z -> Z -> Bool
-same_ratio_dec_inf a b c d e f g h =
-  (a * f, b * g, c * h, a * g, a * h, b * h) Base.==
-  (b * e, c * f, d * g, c * e, d * e, d * f)
-
 outside :: Foldable f => f Z -> Z
 outside = getSum . foldMap (Sum . signum)
 

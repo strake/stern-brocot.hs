@@ -143,7 +143,11 @@ qhomographic a b c d = \ case
     Qneg p -> qhomographic_Qp_to_Q (negate a) b (negate c) d p
 
 qhomographic' :: N -> N -> N -> N -> Qp -> Qp
-qhomographic' a b c d = \ case
+qhomographic' a b c d
+  | a * d ≡ b * c = pure $ case d of
+    Nul -> positive_fraction_encoding (fromN a) (fromN c)
+    _   -> positive_fraction_encoding (fromN b) (fromN d)
+  | otherwise = \ case
     One -> positive_fraction_encoding (fromN $ a + b) (fromN $ c + d)
     p | Just (x, y) <- N.top_more_informative a b c d -> NR (qhomographic' x y c d p)
       | Just (x, y) <- N.top_more_informative c d a b -> DL (qhomographic' a b x y p)
@@ -203,7 +207,13 @@ qquadratic a b c d e f g h = curry $ \ case
   where blah φ χ = qquadratic_Qp_to_Q ((φ . χ) a) (φ b) (χ c) d ((φ . χ) e) (φ f) (χ g) h
 
 qquadratic' :: N -> N -> N -> N -> N -> N -> N -> N -> Qp -> Qp -> Qp
-qquadratic' a b c d e f g h = curry $ \ case
+qquadratic' a b c d e f g h
+  | same_ratio_dec_inf a b c d e f g h = curry . pure $ case (e, f, g) of
+    (Nul, Nul, Nul) -> positive_fraction_encoding (fromN d) (fromN h)
+    (Nul, Nul, _)   -> positive_fraction_encoding (fromN c) (fromN g)
+    (Nul, _,   _)   -> positive_fraction_encoding (fromN b) (fromN f)
+    (_,   _,   _)   -> positive_fraction_encoding (fromN a) (fromN e)
+  | otherwise = curry $ \ case
     (One, q) -> qhomographic' (a + c) (b + d) (e + g) (f + h) q
     (p, One) -> qhomographic' (a + b) (c + d) (e + f) (g + h) p
     (p, q)
@@ -219,6 +229,12 @@ qquadratic' a b c d e f g h = curry $ \ case
         (a + c) (a + b + c + d) c (c + d) (e + g) (e + f + g + h) g (g + h) xs ys
     (DL xs, DL ys) -> qquadratic'
         (a + b + c + d) (b + d) (c + d) d (e + f + g + h) (f + h) (g + h) h xs ys
+
+same_ratio_dec_inf
+ :: (Base.Eq a, Semigroup (Product a)) => a -> a -> a -> a -> a -> a -> a -> a -> Bool
+same_ratio_dec_inf a b c d e f g h =
+  (a * f, b * g, c * h, a * g, a * h, b * h) Base.==
+  (b * e, c * f, d * g, c * e, d * e, d * f)
 
 instance Show Qp where
     show = \ case
